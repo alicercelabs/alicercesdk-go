@@ -45,34 +45,31 @@ func (s *IPService) Self(ctx context.Context) (*IPResult, error) {
 // CEPService is the client's CEP (Brazilian postal code) API — client.CEP.
 type CEPService struct{ c *Client }
 
-// CEPResult is one address lookup's answer.
+// CEPResult is one address lookup's answer. Municipio (not "cidade") is
+// the field name the API itself uses.
 type CEPResult struct {
-	CEP        string `json:"cep"`
-	Logradouro string `json:"logradouro"`
-	Bairro     string `json:"bairro"`
-	Cidade     string `json:"cidade"`
-	UF         string `json:"uf"`
-	DDD        string `json:"ddd,omitempty"`
+	CEP              string `json:"cep"`
+	Logradouro       string `json:"logradouro"`
+	Complemento      string `json:"complemento,omitempty"`
+	Bairro           string `json:"bairro"`
+	Municipio        string `json:"municipio"`
+	MunicipioCodIBGE int64  `json:"municipio_cod_ibge,omitempty"`
+	UF               string `json:"uf"`
+	Nome             string `json:"nome,omitempty"`
+	DDD              string `json:"ddd,omitempty"`
 }
 
 // CEPGetOptions are Get's optional query parameters.
 type CEPGetOptions struct {
 	// DDD enriches the response with the city's phone area code.
 	DDD bool
-	// Rota adds route/distance fields — see the CEP docs page.
-	Rota bool
 }
 
 // Get looks up an address by CEP. opts may be nil.
 func (s *CEPService) Get(ctx context.Context, cep string, opts *CEPGetOptions) (*CEPResult, error) {
 	q := url.Values{}
-	if opts != nil {
-		if opts.DDD {
-			q.Set("ddd", "true")
-		}
-		if opts.Rota {
-			q.Set("rota", "true")
-		}
+	if opts != nil && opts.DDD {
+		q.Set("ddd", "true")
 	}
 	var out CEPResult
 	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/cep/"+cep, q, nil, &out); err != nil {
@@ -132,14 +129,22 @@ func (s *CEPService) Distance(ctx context.Context, origem, destino string, rota 
 	return &out, nil
 }
 
+// CEPBulkResult is one entry of Bulk's answer — Endereco is set on
+// success, Erro is set otherwise (never both).
+type CEPBulkResult struct {
+	CEP      string     `json:"cep"`
+	Endereco *CEPResult `json:"endereco,omitempty"`
+	Erro     string     `json:"erro,omitempty"`
+}
+
 // Bulk looks up several CEPs in one call. Costs one rate-limit unit per
 // CEP requested, not one per call — see the CEP docs page.
-func (s *CEPService) Bulk(ctx context.Context, ceps []string) (map[string]any, error) {
+func (s *CEPService) Bulk(ctx context.Context, ceps []string) ([]CEPBulkResult, error) {
 	body, err := jsonBody(map[string]any{"ceps": ceps})
 	if err != nil {
 		return nil, err
 	}
-	var out map[string]any
+	var out []CEPBulkResult
 	if err := s.c.doJSON(ctx, "POST", s.c.APIBase, "/api/v1/cep/lote", nil, body, &out); err != nil {
 		return nil, err
 	}

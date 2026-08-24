@@ -42,7 +42,10 @@ func (s *CronService) Get(ctx context.Context, id string) (CronJob, error) {
 	return out, nil
 }
 
-// Update changes a job's fields.
+// Update replaces a job's fields — this is PUT semantics (the whole
+// record), not a partial patch. Pass every field Create requires, not
+// just the one you're changing, or the API rejects the request the same
+// way it would reject an incomplete Create.
 func (s *CronService) Update(ctx context.Context, id string, fields CronJob) (CronJob, error) {
 	body, err := jsonBody(fields)
 	if err != nil {
@@ -126,7 +129,8 @@ func (s *UpTimeService) Get(ctx context.Context, id string) (UpTimeMonitor, erro
 	return out, nil
 }
 
-// Update changes a monitor's fields.
+// Update replaces a monitor's fields — same PUT-is-whole-resource-replace
+// deal as CronService.Update: pass every field Create requires.
 func (s *UpTimeService) Update(ctx context.Context, id string, fields UpTimeMonitor) (UpTimeMonitor, error) {
 	body, err := jsonBody(fields)
 	if err != nil {

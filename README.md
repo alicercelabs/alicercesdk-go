@@ -1,8 +1,8 @@
 # alicercesdk-go
 
-SDK oficial em Go para a [AlicerceLabs](https://alicercelabs.com.br) — infra básica de API pra quem constrói no Brasil (IP, CEP, DNS, email, filas, banco de dados edge, execução de WASM e mais, todas atrás de uma autenticação e um formato de resposta só).
+SDK oficial em Go para a [AlicerceLabs](https://alicercelabs.com.br): IP, CEP, DNS, email, filas, banco de dados edge, execução de WASM e o resto das 16 APIs, todas atrás da mesma autenticação e do mesmo formato de resposta.
 
-Zero dependências externas — só a standard library.
+Zero dependências externas, só a standard library.
 
 ```bash
 go get github.com/alicercelabs/alicercesdk-go
@@ -64,7 +64,7 @@ Um campo por API, todos no mesmo client:
 | `client.Auth` | Registro, login, perfil |
 | `client.Account` | Suas próprias API keys e analytics de uso |
 
-Documentação completa de cada API, com todos os parâmetros: [alicercelabs.com.br](https://alicercelabs.com.br).
+Cada parâmetro e cada campo de resposta está documentado em [alicercelabs.com.br](https://alicercelabs.com.br).
 
 ## Exemplos
 
@@ -84,7 +84,7 @@ for _, linha := range uso {
 
 ```go
 nova, _ := client.Account.APIKeys.Create(ctx, "ci-pipeline")
-fmt.Println(nova.Key) // só aparece aqui — salve agora
+fmt.Println(nova.Key) // só aparece aqui, salve agora
 
 keys, _ := client.Account.APIKeys.List(ctx)
 for _, k := range keys {
@@ -107,7 +107,7 @@ resultado, _ := client.EdgeDB.Query(ctx, "meubanco", "SELECT * FROM t", nil)
 fmt.Println(resultado.Rows)
 ```
 
-**Endpoints que devolvem arquivo** (QRCode, Imagem, Templating, Functions `Invoke`) devolvem um `*BinaryResponse`:
+**Endpoints que devolvem arquivo** (QRCode, Imagem, Templating, Functions `Invoke`) devolvem um `*BinaryResponse`, não o envelope JSON de sempre:
 
 ```go
 qr, _ := client.QRCode.Generate(ctx, "https://alicercelabs.com.br", 512)
@@ -123,7 +123,7 @@ fatura, _ := client.Templating.Invoice(ctx, alicercelabs.InvoiceRequest{
 fatura.Save("fatura.pdf")
 ```
 
-**Functions** (WASM, qualquer linguagem que compile pra WASI — incluindo o próprio Go):
+**Functions** (WASM, qualquer linguagem que compile pra WASI, incluindo o próprio Go):
 
 ```go
 wasm, _ := os.ReadFile("minha_funcao.wasm")
@@ -172,18 +172,35 @@ if alicercelabs.IsRateLimit(err) {
 client := alicercelabs.New(
 	"alk_...",
 	alicercelabs.WithAPIBase("https://api.alicercelabs.com.br"),      // padrão
-	alicercelabs.WithAccountBase("https://app.alicercelabs.com.br"),  // padrão — só client.Account.*
+	alicercelabs.WithAccountBase("https://app.alicercelabs.com.br"),  // padrão, só client.Account.*
 	alicercelabs.WithTimeout(30*time.Second),
 )
 ```
+
+`AccountBase` existe separado de `APIBase` porque API keys e analytics de uso vivem no backend do painel, não no host das APIs de produto. Não precisa pensar nisso no dia a dia, o SDK já manda cada chamada pro host certo.
 
 ## Desenvolvimento
 
 ```bash
 go build ./...
 go vet ./...
-go test ./...
+go test ./...              # unitários, ~90% de cobertura de statements
+go test -cover ./...       # com o número de cobertura
 ```
+
+Os testes unitários sobem um `httptest.Server` real e batem nele, um teste por método de API (`resources_test.go`), mais a máquina de request/erro em si (`client_test.go`) e as ramificações de erro (`errorpaths_test.go`, `coverage_test.go`).
+
+### Testes de integração
+
+`integration_test.go` bate numa instância real da AlicerceLabs (produção por padrão), usando a mesma API pública que qualquer chamador usaria. Ele registra uma conta descartável de verdade, cria e apaga recursos de verdade (chaves KV, uma fila, um Edge DB, um job de cron, um monitor de uptime, uma função, uma API key) e no fim apaga a própria conta. Por isso é opt-in, atrás de uma build tag:
+
+```bash
+ALICERCELABS_INTEGRATION=1 go test -tags integration -run TestIntegration -v .
+```
+
+`ALICERCELABS_API_BASE`/`ALICERCELABS_ACCOUNT_BASE` apontam pra uma instância self-hosted em vez de produção, se for o caso.
+
+Não testado de propósito: `Cron.WorkerStart`/`WorkerStop` e `UpTime.WorkerStart`/`WorkerStop`. Esses controlam um daemon compartilhado por toda a instância, não algo isolado à conta de teste, então pará-lo aqui afetaria usuários de verdade. `WorkerStatus` (só leitura) é testado no lugar deles.
 
 ## Licença
 
