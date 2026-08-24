@@ -1,5 +1,8 @@
 # alicercesdk-go
 
+[![CI](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml/badge.svg)](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/alicercelabs/alicercesdk-go/main/.github/badges/coverage.json)](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml)
+
 SDK oficial em Go para a [AlicerceLabs](https://alicercelabs.com.br): IP, CEP, DNS, email, filas, banco de dados edge, execução de WASM e o resto das 16 APIs, todas atrás da mesma autenticação e do mesmo formato de resposta.
 
 Zero dependências externas, só a standard library.

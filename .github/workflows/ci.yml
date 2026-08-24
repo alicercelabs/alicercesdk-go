@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - run: go build ./...
+      - run: go vet ./...
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "gofmt needs to be run on:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: Test with coverage
+        run: go test -coverprofile=cover.out ./...
+
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          PCT=$(go tool cover -func=cover.out | grep ^total: | awk '{print $3}' | tr -d '%')
+          PCT=${PCT%.*}
+          COLOR=$([ "$PCT" -ge 90 ] && echo brightgreen || ([ "$PCT" -ge 75 ] && echo yellow || echo red))
+          mkdir -p .github/badges
+          printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}' "$PCT" "$COLOR" > .github/badges/coverage.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.json
+          git diff --staged --quiet || git commit -m "ci: update coverage badge [skip ci]"
+          git push

@@ -1,0 +1,30 @@
+name: Integration
+
+# Manual only — this hits a real AlicerceLabs instance (production by
+# default), registers and deletes a real throwaway account, and creates
+# and deletes real resources. Not something to run on every push/PR.
+on:
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "Override ALICERCELABS_API_BASE (default: production)"
+        required: false
+      account_base:
+        description: "Override ALICERCELABS_ACCOUNT_BASE (default: production)"
+        required: false
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - run: go test -tags integration -run TestIntegration -v .
+        env:
+          ALICERCELABS_INTEGRATION: "1"
+          ALICERCELABS_API_BASE: ${{ github.event.inputs.api_base }}
+          ALICERCELABS_ACCOUNT_BASE: ${{ github.event.inputs.account_base }}
