@@ -48,7 +48,7 @@ Um campo por API, todos no mesmo client:
 
 | Campo | API |
 |---|---|
-| `client.IP` | Geolocalização de IP |
+| `client.IP` | IP Intelligence — geo, ASN, cloud, VPN/Tor (`Lookup`/`Self`/`Batch`) |
 | `client.CEP` | Endereço a partir do CEP |
 | `client.DNS` | Consulta DNS |
 | `client.Email` | Verificação de email |

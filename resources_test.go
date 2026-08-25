@@ -19,29 +19,51 @@ import (
 
 func TestIPLookup(t *testing.T) {
 	srv, routes, _ := newTestServer(t)
-	routes["GET /api/v1/ip/8.8.8.8"] = envelopeJSON(t, map[string]any{"ip": "8.8.8.8", "country": "US"})
+	routes["GET /api/v1/ip/8.8.8.8"] = envelopeJSON(t, map[string]any{
+		"ip": "8.8.8.8", "version": 4, "scope": "public", "routable": true,
+		"location": map[string]any{"country": map[string]any{"code": "US", "name": "United States"}},
+	})
 
 	c := New("tok", WithAPIBase(srv.URL))
-	result, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+	result, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Country != "US" {
+	if result.Location == nil || result.Location.Country == nil || result.Location.Country.Code != "US" {
 		t.Errorf("got %+v", result)
 	}
 }
 
 func TestIPSelf(t *testing.T) {
 	srv, routes, _ := newTestServer(t)
-	routes["GET /api/v1/ip/self"] = envelopeJSON(t, map[string]any{"ip": "203.0.113.9", "country": "BR"})
+	routes["GET /api/v1/ip/self"] = envelopeJSON(t, map[string]any{"ip": "203.0.113.9", "version": 4, "scope": "public", "routable": true})
 
 	c := New("tok", WithAPIBase(srv.URL))
-	result, err := c.IP.Self(context.Background())
+	result, err := c.IP.Self(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if result.IP != "203.0.113.9" {
 		t.Errorf("got %+v", result)
+	}
+}
+
+func TestIPBatch(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["POST /api/v1/ip/batch"] = envelopeJSON(t, map[string]any{
+		"results": []map[string]any{
+			{"ip": "8.8.8.8", "success": true, "data": map[string]any{"ip": "8.8.8.8", "version": 4, "scope": "public", "routable": true}},
+			{"ip": "not-an-ip", "success": false, "error": map[string]any{"code": "INVALID_IP", "message": "invalid IP address format"}},
+		},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	results, err := c.IP.Batch(context.Background(), []string{"8.8.8.8", "not-an-ip"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 || !results[0].Success || results[1].Success {
+		t.Errorf("got %+v", results)
 	}
 }
 

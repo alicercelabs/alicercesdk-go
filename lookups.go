@@ -4,42 +4,256 @@ import (
 	"context"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
-// IPService is the client's IP geolocation API — client.IP.
+// IPService is the client's IP Intelligence API — client.IP.
+// Capability-based enrichment: geo, ASN, cloud and privacy signals are
+// each resolved from their own best available source, independently — a
+// field with no evidence is nil, never a fabricated zero value.
 type IPService struct{ c *Client }
 
 // IPResult is one IP lookup's answer.
 type IPResult struct {
-	IP        string  `json:"ip"`
-	Country   string  `json:"country"`
-	CountryCd string  `json:"country_code"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Lat       float64 `json:"lat"`
-	Lon       float64 `json:"lon"`
-	Timezone  string  `json:"timezone"`
-	ISP       string  `json:"isp"`
-	Org       string  `json:"org"`
-	ASN       string  `json:"asn"`
+	IP       string  `json:"ip"`
+	Version  int     `json:"version"` // 4 or 6
+	Scope    string  `json:"scope"`   // "public", "private", "loopback", "carrier_grade_nat", ...
+	Routable bool    `json:"routable"`
+	Hostname *string `json:"hostname"` // reverse DNS — nil unless ?include=hostname was used
+
+	Location *IPLocation `json:"location"` // nil for non-routable scopes, or if no geo source had data
+	Network  *IPNetwork  `json:"network"`
+	Privacy  IPPrivacy   `json:"privacy"`
+	Traits   IPTraits    `json:"traits"`
+	Carrier  *IPCarrier  `json:"carrier"`
+	Company  *IPCompany  `json:"company"`
+	Risk     IPRisk      `json:"risk"`
+
+	Meta IPMeta `json:"meta"`
 }
 
-// Lookup geolocates a specific public IPv4/IPv6 address.
-func (s *IPService) Lookup(ctx context.Context, ip string) (*IPResult, error) {
+type IPContinent struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+type IPCountry struct {
+	Code string `json:"code"` // ISO 3166-1 alpha-2
+	Name string `json:"name"`
+	IsEU bool   `json:"is_eu"`
+}
+
+type IPRegion struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+type IPLocation struct {
+	Continent        *IPContinent `json:"continent"`
+	Country          *IPCountry   `json:"country"`
+	Region           *IPRegion    `json:"region"`
+	City             *string      `json:"city"`
+	PostalCode       *string      `json:"postal_code"`
+	Latitude         *float64     `json:"latitude"`
+	Longitude        *float64     `json:"longitude"`
+	AccuracyRadiusKM *int         `json:"accuracy_radius_km"`
+	GeonameID        *int         `json:"geoname_id"`
+	Timezone         *string      `json:"timezone"`
+}
+
+type IPCloud struct {
+	Provider string  `json:"provider"` // "aws", "gcp", "azure", "cloudflare", ...
+	Service  *string `json:"service"`
+	Region   *string `json:"region"`
+}
+
+type IPRPKI struct {
+	Status    string  `json:"status"` // "valid", "invalid", "not_found", "unknown"
+	OriginASN *int    `json:"origin_asn"`
+	Prefix    *string `json:"prefix"`
+}
+
+type IPNetwork struct {
+	CIDR         *string  `json:"cidr"` // the matched prefix, when a longest-prefix-match source contributed
+	ASN          *int     `json:"asn"`  // a real number, never a composed "AS<n>" string
+	ASNName      *string  `json:"asn_name"`
+	ASNDomain    *string  `json:"asn_domain"`
+	Organization *string  `json:"organization"`
+	ISP          *string  `json:"isp"`
+	RIR          *string  `json:"rir"`
+	Type         string   `json:"type"` // "isp", "hosting", "business", "cdn", "mobile", ...
+	Anycast      *bool    `json:"anycast"`
+	Cloud        *IPCloud `json:"cloud"`
+	RPKI         *IPRPKI  `json:"rpki"`
+}
+
+type IPVPN struct {
+	Detected   bool    `json:"detected"`
+	Provider   *string `json:"provider"`
+	Confidence string  `json:"confidence"` // "high", "medium", "low", "unknown"
+	LastSeen   *string `json:"last_seen"`
+}
+
+type IPProxy struct {
+	Detected   bool    `json:"detected"`
+	Type       *string `json:"type"`
+	Confidence string  `json:"confidence"`
+	LastSeen   *string `json:"last_seen"`
+}
+
+type IPTor struct {
+	Detected bool  `json:"detected"`
+	ExitNode *bool `json:"exit_node"`
+}
+
+type IPRelay struct {
+	Detected bool    `json:"detected"`
+	Provider *string `json:"provider"`
+}
+
+type IPResidentialProxy struct {
+	Detected   bool    `json:"detected"`
+	Provider   *string `json:"provider"`
+	Confidence string  `json:"confidence"`
+}
+
+// IPPrivacy holds anonymization signals — Detected is always known (never
+// a pointer): "checked, not detected" is itself informative.
+type IPPrivacy struct {
+	Anonymous        *bool              `json:"anonymous"`
+	VPN              IPVPN              `json:"vpn"`
+	Proxy            IPProxy            `json:"proxy"`
+	Tor              IPTor              `json:"tor"`
+	Relay            IPRelay            `json:"relay"`
+	ResidentialProxy IPResidentialProxy `json:"residential_proxy"`
+}
+
+type IPTraits struct {
+	Hosting    *bool `json:"hosting"`
+	Datacenter *bool `json:"datacenter"`
+	Mobile     *bool `json:"mobile"`
+	Satellite  *bool `json:"satellite"`
+	Crawler    *bool `json:"crawler"`
+	Bogon      bool  `json:"bogon"` // true for non-public scopes — always known, never nil
+}
+
+type IPCarrier struct {
+	Name        string `json:"name"`
+	MCC         string `json:"mcc"`
+	MNC         string `json:"mnc"`
+	CountryCode string `json:"country_code"`
+}
+
+type IPCompany struct {
+	Name   string `json:"name"`
+	Domain string `json:"domain"`
+	Type   string `json:"type"`
+}
+
+// IPRisk is deterministic and explainable — a nil Score/"unknown" Level
+// means insufficient evidence, never a fabricated number.
+type IPRisk struct {
+	Score   *int     `json:"score"`
+	Level   string   `json:"level"`
+	Model   *string  `json:"model"`
+	Signals []string `json:"signals"`
+}
+
+type IPConfidence struct {
+	Country string `json:"country"`
+	Region  string `json:"region"`
+	City    string `json:"city"`
+	Network string `json:"network"`
+	Privacy string `json:"privacy"`
+}
+
+type IPMeta struct {
+	UpdatedAt  string              `json:"updated_at"`
+	Confidence IPConfidence        `json:"confidence"`
+	Sources    map[string][]string `json:"sources,omitempty"` // only with IncludeSourceDetails
+}
+
+// IPLookupOptions are optional query parameters shared by Lookup, Self and
+// Batch. A nil *IPLookupOptions is equivalent to the zero value.
+type IPLookupOptions struct {
+	// Fields, when non-empty, restricts the response to these dot-notation
+	// paths (e.g. "location.country", "network.asn") — "ip" is always kept.
+	Fields []string
+	// IncludeSourceDetails adds Meta.Sources (which provider/dataset
+	// answered each category) to the response.
+	IncludeSourceDetails bool
+	// Lang selects the language for geographic names only (continent,
+	// country, region, city) — e.g. "pt-BR". Empty uses the API default (en).
+	Lang string
+}
+
+func (o *IPLookupOptions) query() url.Values {
+	if o == nil {
+		return nil
+	}
+	q := url.Values{}
+	if len(o.Fields) > 0 {
+		q.Set("fields", strings.Join(o.Fields, ","))
+	}
+	if o.IncludeSourceDetails {
+		q.Set("include", "source_details")
+	}
+	if o.Lang != "" {
+		q.Set("lang", o.Lang)
+	}
+	return q
+}
+
+// Lookup resolves a specific public IPv4/IPv6 address. A private/reserved
+// address is not an error — it comes back as a partial profile (Scope/
+// Routable set, the rest nil). opts may be nil.
+func (s *IPService) Lookup(ctx context.Context, ip string, opts *IPLookupOptions) (*IPResult, error) {
 	var out IPResult
-	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ip/"+ip, nil, nil, &out); err != nil {
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ip/"+ip, opts.query(), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-// Self geolocates the caller — the IP the request itself came from.
-func (s *IPService) Self(ctx context.Context) (*IPResult, error) {
+// Self resolves the caller — the IP the request itself came from. opts
+// may be nil.
+func (s *IPService) Self(ctx context.Context, opts *IPLookupOptions) (*IPResult, error) {
 	var out IPResult
-	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ip/self", nil, nil, &out); err != nil {
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ip/self", opts.query(), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// IPBatchItem is one entry of Batch's answer — Data is set on success,
+// Error otherwise (never both).
+type IPBatchItem struct {
+	IP      string        `json:"ip"`
+	Success bool          `json:"success"`
+	Data    *IPResult     `json:"data,omitempty"`
+	Error   *IPBatchError `json:"error,omitempty"`
+}
+
+type IPBatchError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// Batch resolves up to 100 IPs in one call. Each address is resolved
+// independently — one malformed entry never fails the whole batch, it
+// just gets Success:false in its own slot. opts may be nil.
+func (s *IPService) Batch(ctx context.Context, ips []string, opts *IPLookupOptions) ([]IPBatchItem, error) {
+	body, err := jsonBody(map[string]any{"ips": ips})
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Results []IPBatchItem `json:"results"`
+	}
+	if err := s.c.doJSON(ctx, "POST", s.c.APIBase, "/api/v1/ip/batch", opts.query(), body, &out); err != nil {
+		return nil, err
+	}
+	return out.Results, nil
 }
 
 // CEPService is the client's CEP (Brazilian postal code) API — client.CEP.

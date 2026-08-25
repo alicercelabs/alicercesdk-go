@@ -136,10 +136,10 @@ func TestIntegration(t *testing.T) {
 	})
 
 	t.Run("IP", func(t *testing.T) {
-		if _, err := client.IP.Lookup(ctx, "8.8.8.8"); err != nil {
+		if _, err := client.IP.Lookup(ctx, "8.8.8.8", nil); err != nil {
 			t.Errorf("Lookup: %v", err)
 		}
-		if _, err := client.IP.Self(ctx); err != nil {
+		if _, err := client.IP.Self(ctx, nil); err != nil {
 			t.Errorf("Self: %v", err)
 		}
 	})

@@ -25,7 +25,7 @@ func TestIsRateLimit(t *testing.T) {
 	routes["GET /api/v1/ip/8.8.8.8"] = errorJSON(http.StatusTooManyRequests, "rate limit exceeded")
 
 	c := New("tok", WithAPIBase(srv.URL))
-	_, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+	_, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 	if !IsRateLimit(err) {
 		t.Errorf("expected IsRateLimit, got %v", err)
 	}
@@ -48,7 +48,7 @@ func TestErrorFromMalformedBody(t *testing.T) {
 	}
 
 	c := New("tok", WithAPIBase(srv.URL))
-	_, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+	_, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		t.Fatal("expected *APIError")

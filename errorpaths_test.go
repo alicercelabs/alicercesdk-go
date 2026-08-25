@@ -20,8 +20,8 @@ func TestErrorPropagatesFromEveryEndpoint(t *testing.T) {
 		route string
 		call  func(ctx context.Context, c *Client) error
 	}{
-		{"GET /api/v1/ip/8.8.8.8", func(ctx context.Context, c *Client) error { _, err := c.IP.Lookup(ctx, "8.8.8.8"); return err }},
-		{"GET /api/v1/ip/self", func(ctx context.Context, c *Client) error { _, err := c.IP.Self(ctx); return err }},
+		{"GET /api/v1/ip/8.8.8.8", func(ctx context.Context, c *Client) error { _, err := c.IP.Lookup(ctx, "8.8.8.8", nil); return err }},
+		{"GET /api/v1/ip/self", func(ctx context.Context, c *Client) error { _, err := c.IP.Self(ctx, nil); return err }},
 		{"GET /api/v1/cep/01310100", func(ctx context.Context, c *Client) error { _, err := c.CEP.Get(ctx, "01310100", nil); return err }},
 		{"GET /api/v1/cep/busca", func(ctx context.Context, c *Client) error {
 			_, err := c.CEP.Search(ctx, "SP", "São Paulo", "Rua")

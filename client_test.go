@@ -56,14 +56,14 @@ func errorJSON(status int, message string) http.HandlerFunc {
 
 func TestSuccessfulCallUnwrapsData(t *testing.T) {
 	srv, routes, _ := newTestServer(t)
-	routes["GET /api/v1/ip/8.8.8.8"] = envelopeJSON(t, map[string]any{"ip": "8.8.8.8", "country": "US"})
+	routes["GET /api/v1/ip/8.8.8.8"] = envelopeJSON(t, map[string]any{"ip": "8.8.8.8", "version": 4, "scope": "public", "routable": true})
 
 	c := New("tok", WithAPIBase(srv.URL))
-	result, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+	result, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 	if err != nil {
 		t.Fatalf("Lookup: %v", err)
 	}
-	if result.IP != "8.8.8.8" || result.Country != "US" {
+	if result.IP != "8.8.8.8" || result.Scope != "public" {
 		t.Errorf("got %+v", result)
 	}
 }
@@ -77,7 +77,7 @@ func TestSendsBearerHeader(t *testing.T) {
 	}
 
 	c := New("alk_abc123", WithAPIBase(srv.URL))
-	if _, err := c.IP.Lookup(context.Background(), "8.8.8.8"); err != nil {
+	if _, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil); err != nil {
 		t.Fatal(err)
 	}
 	if gotAuth != "Bearer alk_abc123" {
@@ -101,7 +101,7 @@ func TestErrorStatusMapsToAPIError(t *testing.T) {
 			routes["GET /api/v1/ip/8.8.8.8"] = errorJSON(tc.status, "something went wrong")
 
 			c := New("tok", WithAPIBase(srv.URL))
-			_, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+			_, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 			if err == nil {
 				t.Fatal("expected an error")
 			}
@@ -124,7 +124,7 @@ func TestRateLimitErrorCarriesRetryAfter(t *testing.T) {
 	routes["GET /api/v1/ip/8.8.8.8"] = errorJSON(http.StatusTooManyRequests, "rate limit exceeded")
 
 	c := New("tok", WithAPIBase(srv.URL))
-	_, err := c.IP.Lookup(context.Background(), "8.8.8.8")
+	_, err := c.IP.Lookup(context.Background(), "8.8.8.8", nil)
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		t.Fatal("expected *APIError")
