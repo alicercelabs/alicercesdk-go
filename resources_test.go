@@ -11,6 +11,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -625,6 +626,35 @@ func TestQRCodeGenerateReturnsBinaryResponse(t *testing.T) {
 	}
 	if string(result.Content) != "\x89PNGfakepngbytes" || result.ContentType != "image/png" {
 		t.Errorf("got %+v", result)
+	}
+}
+
+func TestQRCodePixReturnsBinaryResponseAndCopiaCola(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	var gotQuery string
+	routes["GET /api/v1/qrcode/pix"] = func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("X-Pix-Copia-Cola", "00020101021126330014br.gov.bcb.pix...6304ABCD")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("\x89PNGfakepixbytes"))
+	}
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.QRCode.Pix(context.Background(), PixParams{
+		Chave: "11999999999", Nome: "Fulano", Cidade: "Sao Paulo", Valor: 10.5,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Content) != "\x89PNGfakepixbytes" || result.ContentType != "image/png" {
+		t.Errorf("got %+v", result)
+	}
+	if result.CopiaCola != "00020101021126330014br.gov.bcb.pix...6304ABCD" {
+		t.Errorf("got CopiaCola=%q", result.CopiaCola)
+	}
+	if !strings.Contains(gotQuery, "chave=11999999999") || !strings.Contains(gotQuery, "valor=10.50") {
+		t.Errorf("got query=%q", gotQuery)
 	}
 }
 

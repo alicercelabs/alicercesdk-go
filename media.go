@@ -22,6 +22,65 @@ func (s *QRCodeService) Generate(ctx context.Context, data string, size int) (*B
 	return s.c.doRaw(ctx, "GET", s.c.APIBase, "/api/v1/qrcode", q, nil, nil)
 }
 
+// PixParams is Pix's input. Chave, Nome and Cidade are required; the rest
+// are optional. Nome/Cidade get uppercased and stripped of accents
+// server-side, same as a card terminal, so send them however you like.
+type PixParams struct {
+	// Chave is the recipient's Pix key: CPF, CNPJ, email, phone or random
+	// key.
+	Chave string
+	// Nome is the recipient's name, up to 25 characters.
+	Nome string
+	// Cidade is the recipient's city, up to 15 characters.
+	Cidade string
+	// Valor is the charge amount in reais (e.g. 10.50). Zero means the
+	// payer types in the amount themselves.
+	Valor float64
+	// TxID identifies the transaction, letters and digits only, up to 25
+	// characters. Empty means "***" (the standard's own "no identifier"
+	// convention).
+	TxID string
+	// Descricao is free text embedded in the payload, up to 72 characters.
+	Descricao string
+	// Size is the image side in pixels, 64-1024. Zero uses the API's
+	// default.
+	Size int
+}
+
+// PixQRCode is Pix's answer: the QR code PNG, plus the same payload as
+// plain text (the "copia e cola" code). Most integrations show both.
+type PixQRCode struct {
+	*BinaryResponse
+	// CopiaCola is the Pix BR Code payload as text, straight from the
+	// X-Pix-Copia-Cola response header.
+	CopiaCola string
+}
+
+// Pix generates a static Pix QR code: builds the EMV/BR Code payload from
+// params and renders it, same encoder and cache as Generate. Doesn't
+// validate that Chave actually exists, that needs the Central Bank's
+// DICT, out of scope here, only its format and length.
+func (s *QRCodeService) Pix(ctx context.Context, params PixParams) (*PixQRCode, error) {
+	q := url.Values{"chave": {params.Chave}, "nome": {params.Nome}, "cidade": {params.Cidade}}
+	if params.Valor > 0 {
+		q.Set("valor", strconv.FormatFloat(params.Valor, 'f', 2, 64))
+	}
+	if params.TxID != "" {
+		q.Set("txid", params.TxID)
+	}
+	if params.Descricao != "" {
+		q.Set("descricao", params.Descricao)
+	}
+	if params.Size > 0 {
+		q.Set("size", strconv.Itoa(params.Size))
+	}
+	resp, err := s.c.doRaw(ctx, "GET", s.c.APIBase, "/api/v1/qrcode/pix", q, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &PixQRCode{BinaryResponse: resp, CopiaCola: resp.Header.Get("X-Pix-Copia-Cola")}, nil
+}
+
 // ImagemService is the client's image-transform API — client.Imagem. See
 // https://alicercelabs.com.br/apis/imagem for the full list of query
 // parameters (resize, crop, rotate, format, quality, watermark_text,

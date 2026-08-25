@@ -116,6 +116,15 @@ fmt.Println(resultado.Rows)
 qr, _ := client.QRCode.Generate(ctx, "https://alicercelabs.com.br", 512)
 qr.Save("qrcode.png")
 
+pix, _ := client.QRCode.Pix(ctx, alicercelabs.PixParams{
+	Chave:  "11999999999",
+	Nome:   "Fulano de Tal",
+	Cidade: "Sao Paulo",
+	Valor:  10.50, // opcional, sem isso quem paga digita o valor
+})
+pix.Save("pix.png")
+fmt.Println(pix.CopiaCola) // o mesmo payload em texto, pra quem quiser mostrar o "copia e cola"
+
 fatura, _ := client.Templating.Invoice(ctx, alicercelabs.InvoiceRequest{
 	Issuer:    alicercelabs.InvoiceParty{Name: "Minha Empresa"},
 	Recipient: alicercelabs.InvoiceParty{Name: "Cliente Exemplo"},

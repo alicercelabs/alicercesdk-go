@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -342,6 +343,19 @@ func TestIntegration(t *testing.T) {
 		}
 		if len(result.Content) == 0 {
 			t.Error("got empty QR code content")
+		}
+
+		pix, err := client.QRCode.Pix(ctx, alicercelabs.PixParams{
+			Chave: "11999999999", Nome: "Fulano", Cidade: "Sao Paulo", Valor: 10.5,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(pix.Content) == 0 {
+			t.Error("got empty Pix QR code content")
+		}
+		if !strings.Contains(pix.CopiaCola, "br.gov.bcb.pix") {
+			t.Errorf("CopiaCola doesn't look like a Pix payload: %q", pix.CopiaCola)
 		}
 	})
 

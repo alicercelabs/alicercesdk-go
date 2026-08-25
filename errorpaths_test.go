@@ -92,6 +92,10 @@ func TestErrorPropagatesFromEveryEndpoint(t *testing.T) {
 		{"POST /api/v1/uptime/worker/stop", func(ctx context.Context, c *Client) error { return c.UpTime.WorkerStop(ctx) }},
 
 		{"GET /api/v1/qrcode", func(ctx context.Context, c *Client) error { _, err := c.QRCode.Generate(ctx, "hello", 0); return err }},
+		{"GET /api/v1/qrcode/pix", func(ctx context.Context, c *Client) error {
+			_, err := c.QRCode.Pix(ctx, PixParams{Chave: "11999999999", Nome: "Fulano", Cidade: "Sao Paulo"})
+			return err
+		}},
 		{"POST /api/v1/imagem/transform", func(ctx context.Context, c *Client) error {
 			_, err := c.Imagem.Transform(ctx, nil, "https://a.com/x.jpg", nil)
 			return err
