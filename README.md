@@ -3,7 +3,7 @@
 [![CI](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml/badge.svg)](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/alicercelabs/alicercesdk-go/main/.github/badges/coverage.json)](https://github.com/alicercelabs/alicercesdk-go/actions/workflows/ci.yml)
 
-SDK oficial em Go para a [AlicerceLabs](https://alicercelabs.com.br): IP, CEP, DNS, email, filas, banco de dados edge, execução de WASM e o resto das 16 APIs, todas atrás da mesma autenticação e do mesmo formato de resposta.
+SDK oficial em Go para a [AlicerceLabs](https://alicercelabs.com.br): IP, CEP, DNS, email, filas, banco de dados edge, execução de WASM e o resto das 16 APIs, todas atrás do mesmo formato de resposta. As de consulta pura (IP, CEP, DNS, email, SSL, confiabilidade, mapas, QR code, imagem, fatura) respondem sem nenhuma credencial: `New("")` já funciona, numa cota menor. Pra cota maior nessas, ou pra usar as que guardam dado seu (chave-valor, fila, banco edge, funções, cron, uptime, que sempre exigem um token), é só registrar, ver "Ainda não tem uma chave?" abaixo.
 
 Zero dependências externas, só a standard library.
 
@@ -34,7 +34,7 @@ func main() {
 }
 ```
 
-Ainda não tem uma chave? `Register`/`Login` guardam o token no client sozinhos:
+Ainda não tem uma chave? Nas APIs de consulta pura, `New("")` já funciona sem mais nada, numa cota menor por IP (100/dia em vez de 1.000/dia). `Register`/`Login` guardam o token no client sozinhos, se você quiser a cota maior ou uma das APIs que guardam dado seu (KV, Queue, EdgeDB, Functions, Cron, UpTime, essas sempre exigem token):
 
 ```go
 client := alicercelabs.New("")
