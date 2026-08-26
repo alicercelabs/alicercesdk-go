@@ -27,7 +27,6 @@ type IPResult struct {
 	Traits   IPTraits    `json:"traits"`
 	Carrier  *IPCarrier  `json:"carrier"`
 	Company  *IPCompany  `json:"company"`
-	Risk     IPRisk      `json:"risk"`
 
 	Meta IPMeta `json:"meta"`
 }
@@ -148,15 +147,6 @@ type IPCompany struct {
 	Name   string `json:"name"`
 	Domain string `json:"domain"`
 	Type   string `json:"type"`
-}
-
-// IPRisk is deterministic and explainable — a nil Score/"unknown" Level
-// means insufficient evidence, never a fabricated number.
-type IPRisk struct {
-	Score   *int     `json:"score"`
-	Level   string   `json:"level"`
-	Model   *string  `json:"model"`
-	Signals []string `json:"signals"`
 }
 
 type IPConfidence struct {
