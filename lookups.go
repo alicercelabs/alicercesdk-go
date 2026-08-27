@@ -25,8 +25,6 @@ type IPResult struct {
 	Network  *IPNetwork  `json:"network"`
 	Privacy  IPPrivacy   `json:"privacy"`
 	Traits   IPTraits    `json:"traits"`
-	Carrier  *IPCarrier  `json:"carrier"`
-	Company  *IPCompany  `json:"company"`
 
 	Meta IPMeta `json:"meta"`
 }
@@ -81,7 +79,6 @@ type IPNetwork struct {
 	ISP          *string  `json:"isp"`
 	RIR          *string  `json:"rir"`
 	Type         string   `json:"type"` // "isp", "hosting", "business", "cdn", "mobile", ...
-	Anycast      *bool    `json:"anycast"`
 	Cloud        *IPCloud `json:"cloud"`
 	RPKI         *IPRPKI  `json:"rpki"`
 }
@@ -134,19 +131,6 @@ type IPTraits struct {
 	Satellite  *bool `json:"satellite"`
 	Crawler    *bool `json:"crawler"`
 	Bogon      bool  `json:"bogon"` // true for non-public scopes — always known, never nil
-}
-
-type IPCarrier struct {
-	Name        string `json:"name"`
-	MCC         string `json:"mcc"`
-	MNC         string `json:"mnc"`
-	CountryCode string `json:"country_code"`
-}
-
-type IPCompany struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
-	Type   string `json:"type"`
 }
 
 type IPConfidence struct {
