@@ -193,6 +193,164 @@ func TestIBGEMunicipios(t *testing.T) {
 	}
 }
 
+// ---- bancos ----
+
+func TestBancosGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/bancos/1"] = envelopeJSON(t, map[string]any{
+		"ispb": "00000000", "codigo": "1", "nome": "BCO DO BRASIL S.A.", "participa_compe": true,
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Bancos.Get(context.Background(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Nome != "BCO DO BRASIL S.A." || !result.ParticipaCompe {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- ncm ----
+
+func TestNCMGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/ncm/33051000"] = envelopeJSON(t, map[string]any{
+		"codigo": "3305.10.00", "descricao": "- Xampus",
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.NCM.Get(context.Background(), "33051000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Descricao != "- Xampus" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- oms ----
+
+func TestOMSCID10(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/oms/cid10/A00.0"] = envelopeJSON(t, map[string]any{
+		"codigo": "A00.0", "nome": "Cólera devida a Vibrio cholerae 01, biótipo cholerae",
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.OMS.CID10(context.Background(), "A00.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Nome == "" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- cambio ----
+
+func TestCambioGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/cambio/USD/2026-08-25"] = envelopeJSON(t, map[string]any{
+		"moeda": "USD", "data": "2026-08-25",
+		"cotacoes": []map[string]any{{"cotacao_venda": 5.149, "tipo_boletim": "Fechamento PTAX"}},
+		"meta":     map[string]any{"fonte": "bcb"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Cambio.Get(context.Background(), "USD", "2026-08-25")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cotacoes) != 1 || result.Meta.Fonte != "bcb" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+func TestCambioMoedas(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/cambio/moedas"] = envelopeJSON(t, []map[string]any{
+		{"simbolo": "USD", "nome": "Dólar dos Estados Unidos", "tipo_moeda": "A"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Cambio.Moedas(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].Simbolo != "USD" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- taxas ----
+
+func TestTaxasGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/taxas/selic"] = envelopeJSON(t, map[string]any{"nome": "selic", "valor": 14.25, "data": "2026-08-26"})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Taxas.Get(context.Background(), "selic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Valor != 14.25 {
+		t.Errorf("got %+v", result)
+	}
+}
+
+func TestTaxasSerie(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/taxas/igpm/serie"] = envelopeJSON(t, []map[string]any{
+		{"data": "2026-05-01", "valor": 0.84},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Taxas.Serie(context.Background(), "igpm", "2026-05-01", "2026-06-01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- registrobr ----
+
+func TestRegistroBRGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/registrobr/brasilapi.com.br"] = envelopeJSON(t, map[string]any{
+		"dominio": "brasilapi.com.br", "disponivel": false, "meta": map[string]any{"fonte": "registro.br"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.RegistroBR.Get(context.Background(), "brasilapi.com.br")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Disponivel {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- pix ----
+
+func TestPIXParticipantes(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/pix/participantes"] = envelopeJSON(t, []map[string]any{
+		{"ispb": "00360305", "nome": "CAIXA ECONOMICA FEDERAL"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.PIX.Participantes(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].Nome != "CAIXA ECONOMICA FEDERAL" {
+		t.Errorf("got %+v", result)
+	}
+}
+
 // ---- cep ----
 
 func TestCEPGet(t *testing.T) {

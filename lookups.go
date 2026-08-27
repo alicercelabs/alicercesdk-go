@@ -598,6 +598,231 @@ func (s *IBGEService) CNAE(ctx context.Context, codigo string) (*IBGECNAEClasse,
 	return &out, nil
 }
 
+// BancosService is the client's Bancos API — client.Bancos. No
+// fallback: the source is already the Central Bank's own.
+type BancosService struct{ c *Client }
+
+// BancoResult is Get's answer.
+type BancoResult struct {
+	ISPB           string `json:"ispb"`
+	Codigo         string `json:"codigo,omitempty"`
+	Nome           string `json:"nome"`
+	NomeExtenso    string `json:"nome_extenso,omitempty"`
+	ParticipaCompe bool   `json:"participa_compe"`
+	InicioOperacao string `json:"inicio_operacao,omitempty"`
+}
+
+// Get looks up a bank by its numeric code (no leading zeros, e.g. "1"
+// for Banco do Brasil).
+func (s *BancosService) Get(ctx context.Context, codigo string) (*BancoResult, error) {
+	var out BancoResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/bancos/"+codigo, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// List returns every STR participant.
+func (s *BancosService) List(ctx context.Context) ([]BancoResult, error) {
+	var out []BancoResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/bancos", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// NCMService is the client's NCM API — client.NCM. No fallback: the
+// source is already the Siscomex's own.
+type NCMService struct{ c *Client }
+
+// NCMResult is Get's answer.
+type NCMResult struct {
+	Codigo     string `json:"codigo"`
+	Descricao  string `json:"descricao"`
+	DataInicio string `json:"data_inicio,omitempty"`
+	DataFim    string `json:"data_fim,omitempty"`
+	TipoAto    string `json:"tipo_ato,omitempty"`
+	NumeroAto  string `json:"numero_ato,omitempty"`
+	AnoAto     string `json:"ano_ato,omitempty"`
+}
+
+// Get looks up an NCM code, with or without punctuation.
+func (s *NCMService) Get(ctx context.Context, codigo string) (*NCMResult, error) {
+	var out NCMResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ncm/"+codigo, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// OMSService is the client's OMS (ICD-10) API — client.OMS. No
+// fallback: the source is already DATASUS's own.
+type OMSService struct{ c *Client }
+
+// CID10Result is CID10's answer.
+type CID10Result struct {
+	Codigo string `json:"codigo"`
+	Nome   string `json:"nome"`
+}
+
+// CID10 looks up an ICD-10 code — a 3-character category ("A00") or a
+// subcategory with or without a dot ("A000" or "A00.0").
+func (s *OMSService) CID10(ctx context.Context, codigo string) (*CID10Result, error) {
+	var out CID10Result
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/oms/cid10/"+codigo, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CambioService is the client's Câmbio API — client.Cambio.
+type CambioService struct{ c *Client }
+
+// Cotacao is one bulletin (opening, intermediate, or PTAX close) of a day.
+type Cotacao struct {
+	ParidadeCompra  float64 `json:"paridade_compra"`
+	ParidadeVenda   float64 `json:"paridade_venda"`
+	CotacaoCompra   float64 `json:"cotacao_compra"`
+	CotacaoVenda    float64 `json:"cotacao_venda"`
+	DataHoraCotacao string  `json:"data_hora_cotacao"`
+	TipoBoletim     string  `json:"tipo_boletim"`
+}
+
+// CambioResult is Get's answer. Meta.Fonte says which source answered
+// ("bcb" or "brasilapi"). Data may differ from the requested date if it
+// fell on a weekend or holiday — the search walks back to the last
+// business day.
+type CambioResult struct {
+	Moeda    string    `json:"moeda"`
+	Data     string    `json:"data"`
+	Cotacoes []Cotacao `json:"cotacoes"`
+	Meta     struct {
+		Fonte string `json:"fonte"`
+	} `json:"meta"`
+}
+
+// Get looks up a currency's PTAX rate on a date (YYYY-MM-DD).
+func (s *CambioService) Get(ctx context.Context, moeda, data string) (*CambioResult, error) {
+	var out CambioResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/cambio/"+moeda+"/"+data, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// MoedaResult is one entry of Moedas's answer.
+type MoedaResult struct {
+	Simbolo   string `json:"simbolo"`
+	Nome      string `json:"nome"`
+	TipoMoeda string `json:"tipo_moeda"`
+}
+
+// Moedas lists every currency available for Get.
+func (s *CambioService) Moedas(ctx context.Context) ([]MoedaResult, error) {
+	var out []MoedaResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/cambio/moedas", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// TaxasService is the client's Taxas API — client.Taxas. Covers both
+// BrasilAPI's "taxas" and "índices" categories (same source, different
+// series of the same mechanism).
+type TaxasService struct{ c *Client }
+
+// TaxaResult is Get's answer.
+type TaxaResult struct {
+	Nome  string  `json:"nome"`
+	Valor float64 `json:"valor"`
+	Data  string  `json:"data"`
+}
+
+// SerieItem is one point of Serie's answer.
+type SerieItem struct {
+	Data  string  `json:"data"`
+	Valor float64 `json:"valor"`
+}
+
+// Get returns an indicator's latest value ("selic", "cdi", "ipca" or "igpm").
+func (s *TaxasService) Get(ctx context.Context, nome string) (*TaxaResult, error) {
+	var out TaxaResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/taxas/"+nome, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// List returns the latest value of every known indicator.
+func (s *TaxasService) List(ctx context.Context) ([]TaxaResult, error) {
+	var out []TaxaResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/taxas", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Serie returns an indicator's historical series between dataInicial and
+// dataFinal (both YYYY-MM-DD, inclusive).
+func (s *TaxasService) Serie(ctx context.Context, nome, dataInicial, dataFinal string) ([]SerieItem, error) {
+	q := url.Values{"inicio": {dataInicial}, "fim": {dataFinal}}
+	var out []SerieItem
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/taxas/"+nome+"/serie", q, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RegistroBRService is the client's Registro BR API — client.RegistroBR.
+type RegistroBRService struct{ c *Client }
+
+// RegistroBRResult is Get's answer. Meta.Fonte says which source
+// answered ("registro.br" or "brasilapi").
+type RegistroBRResult struct {
+	Dominio      string   `json:"dominio"`
+	Disponivel   bool     `json:"disponivel"`
+	Status       []string `json:"status,omitempty"`
+	RegistradoEm string   `json:"registrado_em,omitempty"`
+	ExpiraEm     string   `json:"expira_em,omitempty"`
+	Nameservers  []string `json:"nameservers,omitempty"`
+	Meta         struct {
+		Fonte string `json:"fonte"`
+	} `json:"meta"`
+}
+
+// Get evaluates whether a .br domain is available or already registered.
+func (s *RegistroBRService) Get(ctx context.Context, dominio string) (*RegistroBRResult, error) {
+	var out RegistroBRResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/registrobr/"+dominio, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PIXService is the client's PIX API — client.PIX. No official
+// structured source exists yet (the Central Bank only publishes this
+// list as a PDF) — this proxies BrasilAPI directly, no fallback chain.
+type PIXService struct{ c *Client }
+
+// ParticipanteResult is one entry of Participantes's answer.
+type ParticipanteResult struct {
+	ISPB                   string `json:"ispb"`
+	Nome                   string `json:"nome"`
+	NomeReduzido           string `json:"nome_reduzido"`
+	ModalidadeParticipacao string `json:"modalidade_participacao"`
+	TipoParticipacao       string `json:"tipo_participacao"`
+	InicioOperacao         string `json:"inicio_operacao,omitempty"`
+}
+
+// Participantes lists every institution participating in PIX.
+func (s *PIXService) Participantes(ctx context.Context) ([]ParticipanteResult, error) {
+	var out []ParticipanteResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/pix/participantes", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CEPBulkResult is one entry of Bulk's answer — Endereco is set on
 // success, Erro is set otherwise (never both).
 type CEPBulkResult struct {

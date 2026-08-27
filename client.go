@@ -50,6 +50,13 @@ type Client struct {
 	DiasUteis  *DiasUteisService
 	ISBN       *ISBNService
 	IBGE       *IBGEService
+	Bancos     *BancosService
+	NCM        *NCMService
+	OMS        *OMSService
+	Cambio     *CambioService
+	Taxas      *TaxasService
+	RegistroBR *RegistroBRService
+	PIX        *PIXService
 	DNS        *DNSService
 	Email      *EmailService
 	SSL        *SSLService
@@ -120,6 +127,13 @@ func New(apiKey string, opts ...Option) *Client {
 	c.DiasUteis = &DiasUteisService{c}
 	c.ISBN = &ISBNService{c}
 	c.IBGE = &IBGEService{c}
+	c.Bancos = &BancosService{c}
+	c.NCM = &NCMService{c}
+	c.OMS = &OMSService{c}
+	c.Cambio = &CambioService{c}
+	c.Taxas = &TaxasService{c}
+	c.RegistroBR = &RegistroBRService{c}
+	c.PIX = &PIXService{c}
 	c.DNS = &DNSService{c}
 	c.Email = &EmailService{c}
 	c.SSL = &SSLService{c}

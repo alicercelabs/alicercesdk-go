@@ -56,6 +56,13 @@ Um campo por API, todos no mesmo client:
 | `client.DiasUteis` | Contagem de dias úteis num intervalo |
 | `client.ISBN` | Metadados de livro por ISBN |
 | `client.IBGE` | Regiões, estados, municípios e classes CNAE |
+| `client.Bancos` | Lista de bancos (participantes do STR) |
+| `client.NCM` | Nomenclatura Comum do Mercosul |
+| `client.OMS` | CID-10 |
+| `client.Cambio` | Cotação de câmbio (PTAX) |
+| `client.Taxas` | Taxas e índices oficiais (Selic, CDI, IPCA, IGP-M) |
+| `client.RegistroBR` | Disponibilidade de domínio .br |
+| `client.PIX` | Participantes do PIX |
 | `client.DNS` | Consulta DNS |
 | `client.Email` | Verificação de email |
 | `client.SSL` | Checagem de certificado |
