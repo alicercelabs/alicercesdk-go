@@ -44,6 +44,7 @@ type Client struct {
 
 	IP         *IPService
 	CEP        *CEPService
+	CNPJ       *CNPJService
 	DNS        *DNSService
 	Email      *EmailService
 	SSL        *SSLService
@@ -108,6 +109,7 @@ func New(apiKey string, opts ...Option) *Client {
 
 	c.IP = &IPService{c}
 	c.CEP = &CEPService{c}
+	c.CNPJ = &CNPJService{c}
 	c.DNS = &DNSService{c}
 	c.Email = &EmailService{c}
 	c.SSL = &SSLService{c}

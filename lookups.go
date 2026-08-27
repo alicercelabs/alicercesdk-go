@@ -317,6 +317,90 @@ func (s *CEPService) Distance(ctx context.Context, origem, destino string, rota 
 	return &out, nil
 }
 
+// CNPJService is the client's CNPJ (Brazilian company registry) API —
+// client.CNPJ. Field names match the API's own (Portuguese, same layout
+// the Federal Revenue itself uses), not a translated set.
+type CNPJService struct{ c *Client }
+
+type CNPJCNAE struct {
+	Codigo    int    `json:"codigo"`
+	Descricao string `json:"descricao"`
+}
+
+type CNPJEndereco struct {
+	Logradouro      string `json:"logradouro,omitempty"`
+	Numero          string `json:"numero,omitempty"`
+	Complemento     string `json:"complemento,omitempty"`
+	Bairro          string `json:"bairro,omitempty"`
+	CEP             string `json:"cep,omitempty"`
+	Municipio       string `json:"municipio,omitempty"`
+	CodigoMunicipio int    `json:"codigo_municipio_ibge,omitempty"`
+	UF              string `json:"uf,omitempty"`
+}
+
+// CNPJSocio is one entry in the QSA (quadro de sócios e administradores)
+// — CPFCNPJMascarado already comes masked from the API (***XXXXXX**),
+// never plaintext.
+type CNPJSocio struct {
+	Nome             string `json:"nome"`
+	Qualificacao     string `json:"qualificacao"`
+	DataEntrada      string `json:"data_entrada,omitempty"`
+	CPFCNPJMascarado string `json:"cpf_cnpj_mascarado,omitempty"`
+	FaixaEtaria      string `json:"faixa_etaria,omitempty"`
+}
+
+// CNPJResult is one company lookup's answer. Meta.Fonte says which
+// source answered ("local" or "brasilapi") — see the CNPJ API's docs for
+// why there are two.
+type CNPJResult struct {
+	CNPJ   string `json:"cnpj"`
+	Matriz bool   `json:"matriz"`
+
+	RazaoSocial  string `json:"razao_social"`
+	NomeFantasia string `json:"nome_fantasia,omitempty"`
+
+	SituacaoCadastral          int    `json:"situacao_cadastral"`
+	DescricaoSituacaoCadastral string `json:"descricao_situacao_cadastral"`
+	DataSituacaoCadastral      string `json:"data_situacao_cadastral,omitempty"`
+	MotivoSituacaoCadastral    int    `json:"motivo_situacao_cadastral,omitempty"`
+	DescricaoMotivoSituacao    string `json:"descricao_motivo_situacao_cadastral,omitempty"`
+
+	DataInicioAtividade string `json:"data_inicio_atividade,omitempty"`
+
+	NaturezaJuridica       string `json:"natureza_juridica,omitempty"`
+	CodigoNaturezaJuridica int    `json:"codigo_natureza_juridica,omitempty"`
+
+	Porte         string  `json:"porte,omitempty"`
+	CapitalSocial float64 `json:"capital_social"`
+
+	CNAEFiscal      CNPJCNAE   `json:"cnae_fiscal"`
+	CNAESecundarios []CNPJCNAE `json:"cnaes_secundarios,omitempty"`
+
+	Endereco CNPJEndereco `json:"endereco"`
+
+	Telefone string `json:"telefone,omitempty"`
+	Email    string `json:"email,omitempty"`
+
+	OpcaoPeloSimples *bool `json:"opcao_pelo_simples"`
+	OpcaoPeloMEI     *bool `json:"opcao_pelo_mei"`
+
+	QSA []CNPJSocio `json:"qsa,omitempty"`
+
+	Meta struct {
+		Fonte string `json:"fonte"`
+	} `json:"meta"`
+}
+
+// Get looks up a company by CNPJ, with or without punctuation
+// ("33683111000280" or "33.683.111/0002-80").
+func (s *CNPJService) Get(ctx context.Context, cnpj string) (*CNPJResult, error) {
+	var out CNPJResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/cnpj/"+cnpj, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // CEPBulkResult is one entry of Bulk's answer — Endereco is set on
 // success, Erro is set otherwise (never both).
 type CEPBulkResult struct {

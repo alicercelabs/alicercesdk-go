@@ -67,6 +67,25 @@ func TestIPBatch(t *testing.T) {
 	}
 }
 
+// ---- cnpj ----
+
+func TestCNPJGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/cnpj/33683111000280"] = envelopeJSON(t, map[string]any{
+		"cnpj": "33683111000280", "razao_social": "SERVICO FEDERAL DE PROCESSAMENTO DE DADOS (SERPRO)",
+		"meta": map[string]any{"fonte": "local"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.CNPJ.Get(context.Background(), "33683111000280")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RazaoSocial != "SERVICO FEDERAL DE PROCESSAMENTO DE DADOS (SERPRO)" || result.Meta.Fonte != "local" {
+		t.Errorf("got %+v", result)
+	}
+}
+
 // ---- cep ----
 
 func TestCEPGet(t *testing.T) {
