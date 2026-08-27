@@ -50,6 +50,12 @@ Um campo por API, todos no mesmo client:
 |---|---|
 | `client.IP` | IP Intelligence — geo, ASN, cloud, VPN/Tor (`Lookup`/`Self`/`Batch`) |
 | `client.CEP` | Endereço a partir do CEP |
+| `client.CNPJ` | Consulta de CNPJ (fonte local + fallback BrasilAPI) |
+| `client.CPF` | Validação de CPF e região fiscal |
+| `client.Feriados` | Feriados nacionais por ano |
+| `client.DiasUteis` | Contagem de dias úteis num intervalo |
+| `client.ISBN` | Metadados de livro por ISBN |
+| `client.IBGE` | Regiões, estados, municípios e classes CNAE |
 | `client.DNS` | Consulta DNS |
 | `client.Email` | Verificação de email |
 | `client.SSL` | Checagem de certificado |

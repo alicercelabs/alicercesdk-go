@@ -401,6 +401,203 @@ func (s *CNPJService) Get(ctx context.Context, cnpj string) (*CNPJResult, error)
 	return &out, nil
 }
 
+// CPFService is the client's CPF API — client.CPF. Check-digit
+// validation and issuing fiscal region only, no external source
+// involved (see the API's own docs).
+type CPFService struct{ c *Client }
+
+// CPFResult is Get's answer.
+type CPFResult struct {
+	CPF          string   `json:"cpf"`
+	Valido       bool     `json:"valido"`
+	RegiaoFiscal int      `json:"regiao_fiscal"`
+	Estados      []string `json:"estados"`
+}
+
+// Get validates a CPF (with or without punctuation) and resolves its
+// issuing fiscal region.
+func (s *CPFService) Get(ctx context.Context, cpf string) (*CPFResult, error) {
+	var out CPFResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/cpf/"+cpf, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// FeriadosService is the client's national holidays API —
+// client.Feriados.
+type FeriadosService struct{ c *Client }
+
+// Holiday is one entry of List's answer.
+type Holiday struct {
+	Data string `json:"data"` // YYYY-MM-DD
+	Nome string `json:"nome"`
+	Tipo string `json:"tipo"` // "fixo" or "movel"
+}
+
+// List returns Brazil's national holidays (fixed and moveable) for a
+// given year, 1900 through 2199.
+func (s *FeriadosService) List(ctx context.Context, ano int) ([]Holiday, error) {
+	var out []Holiday
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/feriados/"+strconv.Itoa(ano), nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DiasUteisService is the client's business-day API — client.DiasUteis.
+// Derives from Feriados internally, server-side.
+type DiasUteisService struct{ c *Client }
+
+// DiasUteisResult is Count's answer.
+type DiasUteisResult struct {
+	DiasUteis []string `json:"dias_uteis"`
+	Total     int      `json:"total"`
+}
+
+// DiasUteisOptions configures Count. The zero value counts national
+// holidays as non-business days (the API's own default).
+type DiasUteisOptions struct {
+	// ExcluirFeriados, when true, counts only weekends as non-business
+	// days — national holidays count as business days.
+	ExcluirFeriados bool
+}
+
+// Count returns every business day between dataInicial and dataFinal
+// (both YYYY-MM-DD, inclusive), skipping weekends and, unless opts says
+// otherwise, national holidays. Range capped at 10 years by the API.
+func (s *DiasUteisService) Count(ctx context.Context, dataInicial, dataFinal string, opts *DiasUteisOptions) (*DiasUteisResult, error) {
+	q := url.Values{"data_inicial": {dataInicial}, "data_final": {dataFinal}}
+	if opts != nil && opts.ExcluirFeriados {
+		q.Set("feriados", "false")
+	}
+	var out DiasUteisResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/diasuteis", q, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ISBNService is the client's ISBN API — client.ISBN.
+type ISBNService struct{ c *Client }
+
+// ISBNResult is Get's answer. Meta.Fonte says which source answered
+// ("open-library" or "brasilapi").
+type ISBNResult struct {
+	ISBN      string   `json:"isbn"`
+	Titulo    string   `json:"titulo"`
+	Subtitulo string   `json:"subtitulo,omitempty"`
+	Autores   []string `json:"autores,omitempty"`
+	Editora   string   `json:"editora,omitempty"`
+	AnoPub    string   `json:"ano_publicacao,omitempty"`
+	Paginas   int      `json:"paginas,omitempty"`
+	CapaURL   string   `json:"capa_url,omitempty"`
+	Meta      struct {
+		Fonte string `json:"fonte"`
+	} `json:"meta"`
+}
+
+// Get looks up a book's metadata by ISBN-10 or ISBN-13, with or without
+// hyphens.
+func (s *ISBNService) Get(ctx context.Context, isbn string) (*ISBNResult, error) {
+	var out ISBNResult
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/isbn/"+isbn, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// IBGEService is the client's IBGE API — client.IBGE. Regions, states,
+// municipalities and CNAE (business activity) classes, no fallback (the
+// source is already the official one).
+type IBGEService struct{ c *Client }
+
+type IBGERegiao struct {
+	ID    int    `json:"id"`
+	Sigla string `json:"sigla"`
+	Nome  string `json:"nome"`
+}
+
+type IBGEEstado struct {
+	ID     int        `json:"id"`
+	Sigla  string     `json:"sigla"`
+	Nome   string     `json:"nome"`
+	Regiao IBGERegiao `json:"regiao"`
+}
+
+type IBGEMunicipio struct {
+	CodigoIBGE int    `json:"codigo_ibge"`
+	Nome       string `json:"nome"`
+	UF         string `json:"uf"`
+}
+
+type IBGECNAECategoria struct {
+	Codigo    string `json:"codigo"`
+	Descricao string `json:"descricao"`
+}
+
+type IBGECNAEClasse struct {
+	Codigo    string            `json:"codigo"`
+	Descricao string            `json:"descricao"`
+	Grupo     IBGECNAECategoria `json:"grupo"`
+	Divisao   IBGECNAECategoria `json:"divisao"`
+	Secao     IBGECNAECategoria `json:"secao"`
+}
+
+// Regioes lists Brazil's 5 macro-regions.
+func (s *IBGEService) Regioes(ctx context.Context) ([]IBGERegiao, error) {
+	var out []IBGERegiao
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/regioes", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Estados lists every Brazilian state.
+func (s *IBGEService) Estados(ctx context.Context) ([]IBGEEstado, error) {
+	var out []IBGEEstado
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/uf", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Estado looks up one state by sigla ("SP") or IBGE code ("35").
+func (s *IBGEService) Estado(ctx context.Context, codigo string) (*IBGEEstado, error) {
+	var out IBGEEstado
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/uf/"+codigo, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Municipios lists every municipality of a state (sigla, e.g. "SP").
+func (s *IBGEService) Municipios(ctx context.Context, uf string) ([]IBGEMunicipio, error) {
+	var out []IBGEMunicipio
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/municipios/"+uf, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CNAEClasses lists every CNAE (business activity) class.
+func (s *IBGEService) CNAEClasses(ctx context.Context) ([]IBGECNAEClasse, error) {
+	var out []IBGECNAEClasse
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/cnae", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CNAE looks up one CNAE class by code (e.g. "01113").
+func (s *IBGEService) CNAE(ctx context.Context, codigo string) (*IBGECNAEClasse, error) {
+	var out IBGECNAEClasse
+	if err := s.c.doJSON(ctx, "GET", s.c.APIBase, "/api/v1/ibge/cnae/"+codigo, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // CEPBulkResult is one entry of Bulk's answer — Endereco is set on
 // success, Erro is set otherwise (never both).
 type CEPBulkResult struct {

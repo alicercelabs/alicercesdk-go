@@ -45,6 +45,11 @@ type Client struct {
 	IP         *IPService
 	CEP        *CEPService
 	CNPJ       *CNPJService
+	CPF        *CPFService
+	Feriados   *FeriadosService
+	DiasUteis  *DiasUteisService
+	ISBN       *ISBNService
+	IBGE       *IBGEService
 	DNS        *DNSService
 	Email      *EmailService
 	SSL        *SSLService
@@ -110,6 +115,11 @@ func New(apiKey string, opts ...Option) *Client {
 	c.IP = &IPService{c}
 	c.CEP = &CEPService{c}
 	c.CNPJ = &CNPJService{c}
+	c.CPF = &CPFService{c}
+	c.Feriados = &FeriadosService{c}
+	c.DiasUteis = &DiasUteisService{c}
+	c.ISBN = &ISBNService{c}
+	c.IBGE = &IBGEService{c}
 	c.DNS = &DNSService{c}
 	c.Email = &EmailService{c}
 	c.SSL = &SSLService{c}

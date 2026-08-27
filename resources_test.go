@@ -86,6 +86,113 @@ func TestCNPJGet(t *testing.T) {
 	}
 }
 
+// ---- cpf ----
+
+func TestCPFGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/cpf/10723555079"] = envelopeJSON(t, map[string]any{
+		"cpf": "10723555079", "valido": true, "regiao_fiscal": 0, "estados": []string{"RS"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.CPF.Get(context.Background(), "10723555079")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Valido || result.RegiaoFiscal != 0 || len(result.Estados) != 1 || result.Estados[0] != "RS" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- feriados ----
+
+func TestFeriadosList(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/feriados/2026"] = envelopeJSON(t, []map[string]any{
+		{"data": "2026-01-01", "nome": "Confraternização Universal", "tipo": "fixo"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.Feriados.List(context.Background(), 2026)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].Data != "2026-01-01" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- dias uteis ----
+
+func TestDiasUteisCount(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/diasuteis"] = envelopeJSON(t, map[string]any{
+		"dias_uteis": []string{"2026-01-02", "2026-01-05"}, "total": 2,
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.DiasUteis.Count(context.Background(), "2026-01-01", "2026-01-05", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 2 {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- isbn ----
+
+func TestISBNGet(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/isbn/9788545702870"] = envelopeJSON(t, map[string]any{
+		"isbn": "9788545702870", "titulo": "Akira vol. 1", "meta": map[string]any{"fonte": "open-library"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.ISBN.Get(context.Background(), "9788545702870")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Titulo != "Akira vol. 1" || result.Meta.Fonte != "open-library" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+// ---- ibge ----
+
+func TestIBGEEstado(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/ibge/uf/SP"] = envelopeJSON(t, map[string]any{
+		"id": 35, "sigla": "SP", "nome": "São Paulo",
+		"regiao": map[string]any{"id": 3, "sigla": "SE", "nome": "Sudeste"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.IBGE.Estado(context.Background(), "SP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Nome != "São Paulo" || result.Regiao.Sigla != "SE" {
+		t.Errorf("got %+v", result)
+	}
+}
+
+func TestIBGEMunicipios(t *testing.T) {
+	srv, routes, _ := newTestServer(t)
+	routes["GET /api/v1/ibge/municipios/SP"] = envelopeJSON(t, []map[string]any{
+		{"codigo_ibge": 3550308, "nome": "São Paulo", "uf": "SP"},
+	})
+
+	c := New("tok", WithAPIBase(srv.URL))
+	result, err := c.IBGE.Municipios(context.Background(), "SP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].Nome != "São Paulo" {
+		t.Errorf("got %+v", result)
+	}
+}
+
 // ---- cep ----
 
 func TestCEPGet(t *testing.T) {
